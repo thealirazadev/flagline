@@ -385,6 +385,26 @@ details pre {
   font-size: 0.8125rem;
 }
 
+.pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+
+.pagination li {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.pagination .disabled {
+  color: var(--text-muted);
+}
+
 .banner-danger {
   border: 1px solid #fecaca;
   background: #fee2e2;
