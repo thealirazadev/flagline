@@ -42,6 +42,11 @@ class Environment extends Model
         return $this->hasMany(FlagEnvironment::class);
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'name';
+    }
+
     /**
      * Leading identifier safe to put in logs; the full key never is.
      */

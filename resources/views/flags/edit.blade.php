@@ -19,6 +19,62 @@
     @endif
 
     <div class="card">
+        <h2>State in {{ $environment->name }}</h2>
+        <p class="muted small">
+            Every environment holds its own state. Changes here never affect the other environments.
+        </p>
+
+        <form method="POST"
+              action="{{ url("/flags/{$flag->key}/environments/{$environment->name}") }}?env={{ urlencode($environment->name) }}">
+            @csrf
+            @method('PUT')
+
+            <div class="field checkbox">
+                <input id="enabled" name="enabled" type="checkbox" value="1"
+                       @checked(old('enabled', $state->enabled)) @disabled($flag->isArchived())>
+                <label for="enabled">Enabled</label>
+            </div>
+            <p class="hint">When disabled, every evaluation serves the off variant with reason off.</p>
+
+            <div class="field">
+                <label for="off_variant_id">Off variant</label>
+                <select id="off_variant_id" name="off_variant_id" @disabled($flag->isArchived())>
+                    @foreach ($flag->variants as $index => $variant)
+                        <option value="{{ $variant->id }}"
+                                @selected(old('off_variant_id', $state->off_variant_id) == $variant->id)>
+                            {{ $index }}: {{ $variant->value }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="hint">Served when the flag is disabled or killed.</p>
+                @error('off_variant_id')
+                    <p class="error">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="field">
+                <label for="fallthrough_variant_id">Fallthrough variant</label>
+                <select id="fallthrough_variant_id" name="fallthrough_variant_id" @disabled($flag->isArchived())>
+                    @foreach ($flag->variants as $index => $variant)
+                        <option value="{{ $variant->id }}"
+                                @selected(old('fallthrough_variant_id', $state->fallthrough_variant_id) == $variant->id)>
+                            {{ $index }}: {{ $variant->value }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="hint">Served when the flag is enabled and no targeting rule matches.</p>
+                @error('fallthrough_variant_id')
+                    <p class="error">{{ $message }}</p>
+                @enderror
+            </div>
+
+            @unless ($flag->isArchived())
+                <button type="submit" class="btn">Save state</button>
+            @endunless
+        </form>
+    </div>
+
+    <div class="card">
         <h2>Details</h2>
 
         <form method="POST" action="{{ url("/flags/{$flag->key}") }}?env={{ urlencode($environment->name) }}">

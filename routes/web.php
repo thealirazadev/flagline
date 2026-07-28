@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FlagController;
+use App\Http\Controllers\FlagEnvironmentController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/flags');
@@ -20,4 +21,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/flags/{flag}/edit', [FlagController::class, 'edit']);
     Route::put('/flags/{flag}', [FlagController::class, 'update']);
     Route::post('/flags/{flag}/archive', [FlagController::class, 'archive']);
+
+    Route::put('/flags/{flag}/environments/{environment}', [FlagEnvironmentController::class, 'update']);
 });
