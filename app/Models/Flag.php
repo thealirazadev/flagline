@@ -48,6 +48,14 @@ class Flag extends Model
         return $this->hasMany(Variant::class)->orderBy('sort_order');
     }
 
+    /**
+     * @return HasMany<FlagEnvironment, $this>
+     */
+    public function flagEnvironments(): HasMany
+    {
+        return $this->hasMany(FlagEnvironment::class);
+    }
+
     public function isArchived(): bool
     {
         return $this->archived_at !== null;

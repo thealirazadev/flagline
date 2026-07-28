@@ -6,6 +6,7 @@ use App\Support\KeyGenerator;
 use Database\Factories\EnvironmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Environment extends Model
 {
@@ -31,6 +32,14 @@ class Environment extends Model
         return [
             'signing_secret' => 'encrypted',
         ];
+    }
+
+    /**
+     * @return HasMany<FlagEnvironment, $this>
+     */
+    public function flagEnvironments(): HasMany
+    {
+        return $this->hasMany(FlagEnvironment::class);
     }
 
     /**
