@@ -11,10 +11,26 @@ work; log every non-obvious decision with its reason. Keep entries short and dat
   MurmurHash3_x86_32 implementation verified against the algorithm's published reference
   vectors, so the numbers in the docs are real, not illustrative.
 
+- 2026-07-28 - Phase 1 delivered in 12 commits: Laravel scaffold, env example and
+  `config/flagline.php`, operator login plus `app:create-user`, environments migration/model/
+  seeder, `app:create-environment`, flags and variants, per-environment state, flag CRUD
+  screens, the state form, audit writes and the trail page, the environments page with key
+  reveal, and the test suite. Verified: `php artisan test` 54 passed (180 assertions),
+  `./vendor/bin/pint --test` clean, `migrate:fresh --seed` yields production and staging with
+  distinct `fl_sdk_*` keys and encrypted `fl_sig_*` secrets. Walked the whole checklist against
+  a live server: root redirects to `/flags`, guests are bounced to `/login`, `/register` is 404,
+  a wrong password gives the safe message, boolean flags get exactly `true`/`false`, duplicate
+  and malformed keys are rejected with field errors, enabling in staging leaves production off,
+  archived flags leave the default index but stay under the archived filter and go read-only,
+  and each of the three mutations wrote exactly one audit row.
+
 ## Project status
 
-- Planning stage. Implementation follows `docs/phases.md` (five phases), starting with
-  Phase 1 after owner approval of these documents.
+- Phase 1 complete and pushed. Phase 2 (atomic publishing and signed ruleset distribution) is
+  next and not started. No `rulesets` table, `RulesetPublisher`, `RulesetBuilder`,
+  `RulesetSigner`, API route, or kill switch exists yet, which is why Phase 1 mutations sit in
+  plain `DB::transaction` blocks that write the audit row alongside the config change. Phase 2
+  reroutes exactly those call sites through `RulesetPublisher`.
 
 ## Decisions log
 
@@ -52,9 +68,42 @@ work; log every non-obvious decision with its reason. Keep entries short and dat
   also keeps the self-host footprint to PHP plus a database, matching the Redis-free
   distribution goal.
 
-## Flagged for owner review
+- 2026-07-28 - Scaffolded on Laravel 12.64.0, not the 11.x the docs name. Reason: at scaffold
+  time 11.x is two majors behind (13.x is current) and outside its security-fix window, so
+  pinning it would ship an unpatched framework; 12.64.0 is actively maintained, released
+  2026-07-14, and `composer audit` reports no advisories against the resulting lockfile. It is
+  also the line the sibling laravel projects in this workspace already run, so one PHP toolchain
+  covers all of them. Nothing in `docs/architecture.md` depends on an 11.x-only API. This
+  resolves the open item that was under "Flagged for owner review"; PHP stays at 8.2+, which
+  keeps the native `hash('murmur3a')` the bucketing spec relies on.
+- 2026-07-28 - Verified the three published bucketing vectors in `docs/architecture.md` against
+  this machine's PHP before writing any code, because both SDKs will later have to agree with
+  them: `hash('murmur3a')` plus `hexdec` gives 111560078/78 for `checkout-redesign:user-42`,
+  2215518393/8393 for `checkout-redesign:user-43`, and 2161741713/1713 for
+  `new-pricing:user-42`, all three matching the doc exactly. No bucketing code ships in Phase 1;
+  this was a correctness check on the spec ahead of Phase 4.
+- 2026-07-28 - New flags default to off everywhere with the off variant set to `false` and the
+  fallthrough set to `true` for boolean flags (both to variant index 0 for string flags).
+  Reason: the architecture fixes "new flags start off everywhere" but not the initial serves,
+  and `flag_environments` requires exactly one non-null fallthrough serve, so a default was
+  unavoidable. Off serving `false` is the conservative choice, and fallthrough serving `true`
+  makes the enable toggle do the obvious thing without a second edit.
+- 2026-07-28 - `archived_at` is deliberately absent from `Flag::$fillable`; the archive path
+  assigns it directly. Reason: it was silently dropped by mass assignment during Phase 1, and
+  keeping it unfillable means no request payload can archive or resurrect a flag through the
+  create or update forms.
+- 2026-07-28 - The create screen's variant add/remove buttons submit the same form back to
+  `GET /flags/create` via `formmethod`/`formaction`. Reason: `docs/design.md` requires no-JS
+  round trips, and routing them through the GET route keeps everything already typed without
+  adding a POST branch that would have to distinguish "add a row" from "create the flag".
 
-- Laravel 11.x is specified per the project brief. The sibling hook-relay project later moved
-  to 12.x because security advisories in its dependency set were only patched there; if the
-  same situation holds at scaffold time, the coding agent should surface it before pinning
-  rather than silently choosing either line.
+## Unverified
+
+- Nothing in Phase 1 is unverified. The suite, Pint, the migrations, both artisan commands, and
+  every checklist item were run and observed locally. The one environment quirk worth recording:
+  `php artisan serve` cannot start on this machine because it re-execs the raw PHP binary
+  without the bundled `LD_LIBRARY_PATH` that the `php` wrapper sets, so it dies on
+  `libtidy.so.5deb1`. The live walkthrough used
+  `php -S 127.0.0.1:8124 -t . ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php`
+  from `public/` instead. This is a local toolchain artifact, not an application defect, and it
+  does not affect `php artisan test`.
