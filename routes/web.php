@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FlagController;
 use App\Http\Controllers\FlagEnvironmentController;
@@ -23,4 +24,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/flags/{flag}/archive', [FlagController::class, 'archive']);
 
     Route::put('/flags/{flag}/environments/{environment}', [FlagEnvironmentController::class, 'update']);
+
+    Route::get('/audit', [AuditLogController::class, 'index']);
 });

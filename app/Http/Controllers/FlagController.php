@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreFlagRequest;
 use App\Http\Requests\UpdateFlagRequest;
+use App\Models\AuditLog;
 use App\Models\Environment;
 use App\Models\Flag;
 use App\Models\FlagEnvironment;
@@ -87,6 +88,8 @@ class FlagController extends Controller
 
                 $this->createEnvironmentState($flag);
 
+                AuditLog::record('flag.created', null, $this->snapshot($flag), $flag);
+
                 return $flag;
             });
         } catch (Throwable $e) {
@@ -118,8 +121,14 @@ class FlagController extends Controller
             return back()->with('error', 'Archived flags cannot be edited.');
         }
 
+        $before = $this->snapshot($flag);
+
         try {
-            $flag->update($request->validated());
+            DB::transaction(function () use ($request, $flag, $before) {
+                $flag->update($request->validated());
+
+                AuditLog::record('flag.updated', $before, $this->snapshot($flag->fresh()), $flag);
+            });
         } catch (Throwable $e) {
             report($e);
 
@@ -137,10 +146,16 @@ class FlagController extends Controller
             return back()->with('error', 'That flag is already archived.');
         }
 
+        $before = $this->snapshot($flag);
+
         try {
-            // archived_at stays out of $fillable so no request payload can set it.
-            $flag->archived_at = now();
-            $flag->save();
+            DB::transaction(function () use ($flag, $before) {
+                // archived_at stays out of $fillable so no request payload can set it.
+                $flag->archived_at = now();
+                $flag->save();
+
+                AuditLog::record('flag.archived', $before, null, $flag);
+            });
         } catch (Throwable $e) {
             report($e);
 
@@ -151,6 +166,22 @@ class FlagController extends Controller
 
         return redirect('/flags?env='.urlencode((string) $request->query('env', 'production')))
             ->with('status', "Flag {$flag->key} archived.");
+    }
+
+    /**
+     * The flag-level shape stored in audit before/after snapshots.
+     *
+     * @return array<string, mixed>
+     */
+    private function snapshot(Flag $flag): array
+    {
+        return [
+            'key' => $flag->key,
+            'name' => $flag->name,
+            'description' => $flag->description,
+            'type' => $flag->type,
+            'variants' => $flag->variants()->pluck('value')->all(),
+        ];
     }
 
     /**

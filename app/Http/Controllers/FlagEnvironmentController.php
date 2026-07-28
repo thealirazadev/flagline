@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateFlagEnvironmentRequest;
+use App\Models\AuditLog;
 use App\Models\Environment;
 use App\Models\Flag;
 use App\Models\FlagEnvironment;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -25,13 +27,25 @@ class FlagEnvironmentController extends Controller
             ->where('environment_id', $environment->id)
             ->firstOrFail();
 
+        $before = $state->stateSnapshot();
+
         try {
-            $state->update([
-                'enabled' => $request->boolean('enabled'),
-                'off_variant_id' => $request->integer('off_variant_id'),
-                'fallthrough_variant_id' => $request->integer('fallthrough_variant_id'),
-                'fallthrough_rollout' => null,
-            ]);
+            DB::transaction(function () use ($request, $state, $before, $flag, $environment) {
+                $state->update([
+                    'enabled' => $request->boolean('enabled'),
+                    'off_variant_id' => $request->integer('off_variant_id'),
+                    'fallthrough_variant_id' => $request->integer('fallthrough_variant_id'),
+                    'fallthrough_rollout' => null,
+                ]);
+
+                AuditLog::record(
+                    'environment.state_changed',
+                    $before,
+                    $state->stateSnapshot(),
+                    $flag,
+                    $environment
+                );
+            });
         } catch (Throwable $e) {
             report($e);
 
