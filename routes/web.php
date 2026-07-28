@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\EnvironmentController;
 use App\Http\Controllers\FlagController;
 use App\Http\Controllers\FlagEnvironmentController;
 use Illuminate\Support\Facades\Route;
@@ -25,5 +26,6 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/flags/{flag}/environments/{environment}', [FlagEnvironmentController::class, 'update']);
 
+    Route::get('/environments', [EnvironmentController::class, 'index']);
     Route::get('/audit', [AuditLogController::class, 'index']);
 });
