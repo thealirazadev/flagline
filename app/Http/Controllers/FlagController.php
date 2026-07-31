@@ -9,15 +9,17 @@ use App\Models\Environment;
 use App\Models\Flag;
 use App\Models\FlagEnvironment;
 use App\Models\Variant;
+use App\Support\RulesetPublisher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Throwable;
 
 class FlagController extends Controller
 {
+    public function __construct(private readonly RulesetPublisher $publisher) {}
+
     public function index(Request $request): View
     {
         $environment = $this->selectedEnvironment($request);
@@ -75,7 +77,7 @@ class FlagController extends Controller
             : $request->variantValues();
 
         try {
-            $flag = DB::transaction(function () use ($request, $values) {
+            $flag = $this->publisher->publishToAll(function () use ($request, $values) {
                 $flag = Flag::create($request->safe()->only(['key', 'name', 'description', 'type']));
 
                 foreach ($values as $index => $value) {
@@ -124,7 +126,7 @@ class FlagController extends Controller
         $before = $this->snapshot($flag);
 
         try {
-            DB::transaction(function () use ($request, $flag, $before) {
+            $this->publisher->publishToAll(function () use ($request, $flag, $before) {
                 $flag->update($request->validated());
 
                 AuditLog::record('flag.updated', $before, $this->snapshot($flag->fresh()), $flag);
@@ -149,7 +151,7 @@ class FlagController extends Controller
         $before = $this->snapshot($flag);
 
         try {
-            DB::transaction(function () use ($flag, $before) {
+            $this->publisher->publishToAll(function () use ($flag, $before) {
                 // archived_at stays out of $fillable so no request payload can set it.
                 $flag->archived_at = now();
                 $flag->save();

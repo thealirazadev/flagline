@@ -7,13 +7,15 @@ use App\Models\AuditLog;
 use App\Models\Environment;
 use App\Models\Flag;
 use App\Models\FlagEnvironment;
+use App\Support\RulesetPublisher;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class FlagEnvironmentController extends Controller
 {
+    public function __construct(private readonly RulesetPublisher $publisher) {}
+
     public function update(
         UpdateFlagEnvironmentRequest $request,
         Flag $flag,
@@ -30,7 +32,7 @@ class FlagEnvironmentController extends Controller
         $before = $state->stateSnapshot();
 
         try {
-            DB::transaction(function () use ($request, $state, $before, $flag, $environment) {
+            $this->publisher->publish($environment, function () use ($request, $state, $before, $flag, $environment) {
                 $state->update([
                     'enabled' => $request->boolean('enabled'),
                     'off_variant_id' => $request->integer('off_variant_id'),
