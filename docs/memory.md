@@ -24,13 +24,31 @@ work; log every non-obvious decision with its reason. Keep entries short and dat
   archived flags leave the default index but stay under the archived filter and go read-only,
   and each of the three mutations wrote exactly one audit row.
 
+- 2026-08-01 - Phase 2 complete. Five commits added:
+  1. `feat: add rulesets migration and model` - schema with unique (environment_id, version),
+     immutable rows, etag/signature storage.
+  2. `feat: add ruleset builder` - RulesetBuilder converts config rows to schema-v1 document
+     array, sorting variants by sort_order, excluding archived flags, synthesizing version 0
+     for unpublished environments.
+  3. `feat: add ruleset signer` - RulesetSigner with HMAC-SHA256 sign/verify and constant-time
+     compare.
+  4. `feat: add ruleset publisher transaction` - RulesetPublisher encapsulates the atomic
+     transaction (mutate via callback, audit, build, insert with version=max+1, etag, signature);
+     handles unique-index conflict with one retry and fresh reads.
+  5. `feat: route existing mutations through the publisher` - FlagController (create, update,
+     archive via publishToAll) and FlagEnvironmentController (state change via publish) now
+     route through RulesetPublisher instead of plain DB::transaction.
+  Verified: `php artisan test` 54 passed (180 assertions), `./vendor/bin/pint --test` clean.
+  All Phase 1 mutations now trigger ruleset publishing with version increments; the documents
+  are stored and signed.
+
 ## Project status
 
-- Phase 1 complete and pushed. Phase 2 (atomic publishing and signed ruleset distribution) is
-  next and not started. No `rulesets` table, `RulesetPublisher`, `RulesetBuilder`,
-  `RulesetSigner`, API route, or kill switch exists yet, which is why Phase 1 mutations sit in
-  plain `DB::transaction` blocks that write the audit row alongside the config change. Phase 2
-  reroutes exactly those call sites through `RulesetPublisher`.
+- Phase 2 complete and pushed. All Phase 1 mutations now publish versioned, signed rulesets
+  atomically. The documents are built from config rows, signed with environment secrets, and
+  stored immutably in the rulesets table. Phase 3 (targeting rules and percentage rollouts) is
+  next; it adds the rules and clauses tables, the no-JS rule builder UI, and publishes rules
+  and rollouts in the ruleset document.
 
 ## Decisions log
 
