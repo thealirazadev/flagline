@@ -45,7 +45,7 @@ target defined by the docs.
 
 ## Stack
 
-- PHP 8.2+ / Laravel 11.x, Blade plus one static CSS file (no Node toolchain in the app)
+- PHP 8.2+ / Laravel 12.x, Blade plus one static CSS file (no Node toolchain in the app)
 - SQLite by default, PostgreSQL supported; no Redis, no queue daemon
 - Pest (app and PHP SDK tests), Vitest + tsc (TypeScript SDK tests), Laravel Pint
 - SDKs: PHP 8.1+ with zero runtime dependencies; TypeScript targeting Node 18+ with zero
@@ -67,6 +67,6 @@ target defined by the docs.
 
 ## Status
 
-Planning stage: these documents are the complete specification and no code exists yet.
+Phase 1 is complete and Phase 2 is in progress; these documents remain the specification.
 Implementation follows `docs/phases.md` one phase at a time, each phase gated by its
 verification checklist and owner approval.
