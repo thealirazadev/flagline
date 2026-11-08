@@ -230,7 +230,7 @@ dependencies; murmur3 and semver are small inline implementations proven by the 
 
 ## Data model
 
-Tables named here are the contract; the coding agent must not rename them. All tables carry
+Tables named here are the contract; implementations must not rename them. All tables carry
 Laravel timestamps unless noted. `users` is the standard operator account table (id, name,
 unique email, hashed password); there is no registration.
 
