@@ -27,4 +27,15 @@ return [
 
     'schema_version' => 1,
 
+    /*
+    |--------------------------------------------------------------------------
+    | SDK polling limit
+    |--------------------------------------------------------------------------
+    |
+    | Requests per minute per SDK key on GET /api/v1/ruleset.
+    |
+    */
+
+    'sdk_rate_limit' => (int) env('FLAGLINE_SDK_RATE_LIMIT', 120),
+
 ];
