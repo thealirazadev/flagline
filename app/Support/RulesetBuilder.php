@@ -5,6 +5,8 @@ namespace App\Support;
 use App\Models\Environment;
 use App\Models\Flag;
 use App\Models\FlagEnvironment;
+use App\Models\Rule;
+use App\Models\RuleClause;
 use DateTimeImmutable;
 use DateTimeZone;
 use JsonException;
@@ -24,7 +26,7 @@ class RulesetBuilder
     {
         $states = FlagEnvironment::query()
             ->where('environment_id', $environment->id)
-            ->with(['flag.variants'])
+            ->with(['flag.variants', 'rules.clauses'])
             ->get()
             ->filter(fn (FlagEnvironment $state) => $state->flag !== null && ! $state->flag->isArchived())
             ->sortBy(fn (FlagEnvironment $state) => $state->flag->key);
@@ -109,7 +111,14 @@ class RulesetBuilder
             'killed' => (bool) $state->killed,
             'variants' => $flag->variants->map(fn ($variant) => (string) $variant->value)->values()->all(),
             'off_variant' => $indexById[$state->off_variant_id] ?? 0,
-            'rules' => [],
+            'rules' => $state->rules->map(fn (Rule $rule) => [
+                'clauses' => $rule->clauses->map(fn (RuleClause $clause) => [
+                    'attribute' => $clause->attribute,
+                    'op' => $clause->operator,
+                    'values' => array_values(array_map('strval', $clause->values)),
+                ])->all(),
+                'serve' => $this->serve($rule->serve_variant_id, $rule->serve_rollout, $indexById),
+            ])->values()->all(),
             'fallthrough' => $this->serve($state->fallthrough_variant_id, $state->fallthrough_rollout, $indexById),
         ];
     }
