@@ -28,4 +28,4 @@ jobs:
         run: vendor/bin/pint --test
 
       - name: Tests
-        run: vendor/bin/pest --coverage
+        run: vendor/bin/pest --coverage --min=85
