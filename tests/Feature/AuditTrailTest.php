@@ -47,7 +47,8 @@ it('records the environment on a per environment state change', function () {
     $this->put('/flags/checkout-redesign/environments/staging', [
         'enabled' => '1',
         'off_variant_id' => $flag->variants->firstWhere('value', 'false')->id,
-        'fallthrough_variant_id' => $flag->variants->firstWhere('value', 'true')->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $flag->variants->firstWhere('value', 'true')->id,
     ]);
 
     $entry = AuditLog::latest('id')->firstOrFail();
@@ -91,7 +92,8 @@ it('filters the trail by flag, environment, and action', function () {
     $one = Flag::where('key', 'one-flag')->firstOrFail();
     $this->put('/flags/two-flag/environments/staging', [
         'off_variant_id' => Flag::where('key', 'two-flag')->firstOrFail()->variants->first()->id,
-        'fallthrough_variant_id' => Flag::where('key', 'two-flag')->firstOrFail()->variants->first()->id,
+        'serve' => 'variant',
+        'serve_variant_id' => Flag::where('key', 'two-flag')->firstOrFail()->variants->first()->id,
     ]);
 
     expect($this->get('/audit')->viewData('entries')->count())->toBe(3);

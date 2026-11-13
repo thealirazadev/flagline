@@ -2,11 +2,16 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesServe;
+use App\Models\Flag;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateFlagEnvironmentRequest extends FormRequest
 {
+    use ValidatesServe;
+
     public function authorize(): bool
     {
         return true;
@@ -26,8 +31,17 @@ class UpdateFlagEnvironmentRequest extends FormRequest
         return [
             'enabled' => ['nullable', 'boolean'],
             'off_variant_id' => ['required', 'integer', $belongsToFlag],
-            'fallthrough_variant_id' => ['required', 'integer', $belongsToFlag],
-        ];
+        ] + $this->serveRules();
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $validator) => $this->validateRollout($validator));
+    }
+
+    protected function serveFlag(): Flag
+    {
+        return $this->route('flag')->loadMissing('variants');
     }
 
     /**
@@ -37,7 +51,8 @@ class UpdateFlagEnvironmentRequest extends FormRequest
     {
         return [
             'off_variant_id.exists' => 'Choose a variant that belongs to this flag.',
-            'fallthrough_variant_id.exists' => 'Choose a variant that belongs to this flag.',
+            'serve_variant_id.in' => 'Choose a variant that belongs to this flag.',
+            'weights.required_if' => 'Enter a weight for each variant.',
         ];
     }
 }

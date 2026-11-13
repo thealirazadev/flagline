@@ -30,14 +30,16 @@ class FlagEnvironmentController extends Controller
             ->firstOrFail();
 
         $before = $state->stateSnapshot();
+        [$variantId, $rollout] = $request->serveColumns();
+        $shrinks = $request::shrinksRollout($state->fallthrough_variant_id, $state->fallthrough_rollout, $rollout);
 
         try {
-            $this->publisher->publish($environment, function () use ($request, $state, $before, $flag, $environment) {
+            $this->publisher->publish($environment, function () use ($request, $state, $before, $flag, $environment, $variantId, $rollout) {
                 $state->update([
                     'enabled' => $request->boolean('enabled'),
                     'off_variant_id' => $request->integer('off_variant_id'),
-                    'fallthrough_variant_id' => $request->integer('fallthrough_variant_id'),
-                    'fallthrough_rollout' => null,
+                    'fallthrough_variant_id' => $variantId,
+                    'fallthrough_rollout' => $rollout,
                 ]);
 
                 AuditLog::record(
@@ -61,7 +63,12 @@ class FlagEnvironmentController extends Controller
             'enabled' => $state->enabled,
         ]);
 
-        return redirect("/flags/{$flag->key}/edit?env=".urlencode($environment->name))
+        $redirect = redirect("/flags/{$flag->key}/edit?env=".urlencode($environment->name))
             ->with('status', "State saved for {$environment->name}.");
+
+        return $shrinks
+            ? $redirect->with('warning', 'This rollout lowers a variant\'s weight, so some users already '
+                .'assigned to that variant move to another one. Raising weights never reshuffles users.')
+            : $redirect;
     }
 }

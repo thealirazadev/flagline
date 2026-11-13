@@ -36,7 +36,8 @@ it('enables a flag in one environment without touching the other', function () {
     $this->put('/flags/checkout-redesign/environments/staging', [
         'enabled' => '1',
         'off_variant_id' => $this->false->id,
-        'fallthrough_variant_id' => $this->true->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $this->true->id,
     ])->assertRedirect('/flags/checkout-redesign/edit?env=staging');
 
     expect(stateFor('staging')->enabled)->toBeTrue()
@@ -46,7 +47,8 @@ it('enables a flag in one environment without touching the other', function () {
 it('changes the off variant in one environment only', function () {
     $this->put('/flags/checkout-redesign/environments/staging', [
         'off_variant_id' => $this->true->id,
-        'fallthrough_variant_id' => $this->false->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $this->false->id,
     ])->assertSessionHasNoErrors();
 
     expect(stateFor('staging')->off_variant_id)->toBe($this->true->id)
@@ -57,13 +59,15 @@ it('treats a missing enabled checkbox as disabled', function () {
     $this->put('/flags/checkout-redesign/environments/production', [
         'enabled' => '1',
         'off_variant_id' => $this->false->id,
-        'fallthrough_variant_id' => $this->true->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $this->true->id,
     ]);
     expect(stateFor('production')->enabled)->toBeTrue();
 
     $this->put('/flags/checkout-redesign/environments/production', [
         'off_variant_id' => $this->false->id,
-        'fallthrough_variant_id' => $this->true->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $this->true->id,
     ]);
     expect(stateFor('production')->enabled)->toBeFalse();
 });
@@ -74,15 +78,16 @@ it('rejects a variant that belongs to a different flag', function () {
 
     $this->put('/flags/checkout-redesign/environments/production', [
         'off_variant_id' => $foreign->id,
-        'fallthrough_variant_id' => $foreign->id,
-    ])->assertSessionHasErrors(['off_variant_id', 'fallthrough_variant_id']);
+        'serve' => 'variant',
+        'serve_variant_id' => $foreign->id,
+    ])->assertSessionHasErrors(['off_variant_id', 'serve_variant_id']);
 
     expect(stateFor('production')->off_variant_id)->toBe($this->false->id);
 });
 
 it('requires both variant selections', function () {
     $this->put('/flags/checkout-redesign/environments/production', [])
-        ->assertSessionHasErrors(['off_variant_id', 'fallthrough_variant_id']);
+        ->assertSessionHasErrors(['off_variant_id', 'serve']);
 });
 
 it('refuses state changes on an archived flag', function () {
@@ -91,7 +96,8 @@ it('refuses state changes on an archived flag', function () {
     $this->put('/flags/checkout-redesign/environments/production', [
         'enabled' => '1',
         'off_variant_id' => $this->false->id,
-        'fallthrough_variant_id' => $this->true->id,
+        'serve' => 'variant',
+        'serve_variant_id' => $this->true->id,
     ])->assertSessionHas('error');
 
     expect(stateFor('production')->enabled)->toBeFalse();

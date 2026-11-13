@@ -28,6 +28,7 @@
               action="{{ url("/flags/{$flag->key}/environments/{$environment->name}") }}?env={{ urlencode($environment->name) }}">
             @csrf
             @method('PUT')
+            <input type="hidden" name="form_id" value="state">
 
             <div class="field checkbox">
                 <input id="enabled" name="enabled" type="checkbox" value="1"
@@ -52,26 +53,74 @@
                 @enderror
             </div>
 
-            <div class="field">
-                <label for="fallthrough_variant_id">Fallthrough variant</label>
-                <select id="fallthrough_variant_id" name="fallthrough_variant_id" @disabled($flag->isArchived())>
-                    @foreach ($flag->variants as $index => $variant)
-                        <option value="{{ $variant->id }}"
-                                @selected(old('fallthrough_variant_id', $state->fallthrough_variant_id) == $variant->id)>
-                            {{ $index }}: {{ $variant->value }}
-                        </option>
-                    @endforeach
-                </select>
-                <p class="hint">Served when the flag is enabled and no targeting rule matches.</p>
-                @error('fallthrough_variant_id')
-                    <p class="error">{{ $message }}</p>
-                @enderror
-            </div>
+            @include('flags._serve', [
+                'formId' => 'state',
+                'prefix' => 'fallthrough',
+                'legend' => 'Fallthrough: served when the flag is enabled and no rule matches',
+                'current' => [$state->fallthrough_variant_id, $state->fallthrough_rollout],
+                'readonly' => $flag->isArchived(),
+            ])
 
             @unless ($flag->isArchived())
                 <button type="submit" class="btn">Save state</button>
             @endunless
         </form>
+    </div>
+
+    <div class="card">
+        <h2>Targeting rules in {{ $environment->name }}</h2>
+        <p class="muted small">Rules run top to bottom; the first rule whose clauses all match decides the variant.</p>
+
+        @forelse ($rules as $rule)
+            <section class="rule" aria-labelledby="rule-{{ $rule->id }}-title">
+                <h3 id="rule-{{ $rule->id }}-title">Rule {{ $loop->iteration }}@if ($rule->description): {{ $rule->description }}@endif</h3>
+
+                <form method="POST" action="{{ url("/rules/{$rule->id}") }}?env={{ urlencode($environment->name) }}">
+                    @method('PUT')
+                    @include('flags._rule_form', ['formId' => 'rule-'.$rule->id, 'readonly' => $flag->isArchived()])
+                    @unless ($flag->isArchived())
+                        <button type="submit" class="btn">Save rule</button>
+                    @endunless
+                </form>
+
+                @unless ($flag->isArchived())
+                    <div class="row">
+                        @unless ($loop->first)
+                            <form method="POST" action="{{ url("/rules/{$rule->id}/move") }}">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary" name="direction" value="up">Move up</button>
+                            </form>
+                        @endunless
+                        @unless ($loop->last)
+                            <form method="POST" action="{{ url("/rules/{$rule->id}/move") }}">
+                                @csrf
+                                <button type="submit" class="btn btn-secondary" name="direction" value="down">Move down</button>
+                            </form>
+                        @endunless
+                        <details>
+                            <summary>Delete rule</summary>
+                            <form method="POST" action="{{ url("/rules/{$rule->id}") }}">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-danger">Yes, delete rule {{ $loop->iteration }}</button>
+                            </form>
+                        </details>
+                    </div>
+                @endunless
+            </section>
+        @empty
+            <p class="muted">No rules yet: everyone gets the fallthrough serve.</p>
+        @endforelse
+
+        @unless ($flag->isArchived())
+            <details @if (old('form_id') === 'new') open @endif>
+                <summary>Add a rule</summary>
+                <form method="POST" action="{{ url("/flags/{$flag->key}/environments/{$environment->name}/rules") }}?env={{ urlencode($environment->name) }}">
+                    @include('flags._rule_form', ['formId' => 'new', 'rule' => null, 'readonly' => false])
+                    <button type="submit" class="btn">Add rule</button>
+                </form>
+            </details>
+        @endunless
     </div>
 
     <div class="card">

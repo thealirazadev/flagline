@@ -113,7 +113,8 @@ class FlagController extends Controller
             'flag' => $flag->load('variants'),
             'environment' => $environment,
             'environments' => $this->environments(),
-            'state' => $this->stateFor($flag, $environment),
+            'state' => $state = $this->stateFor($flag, $environment),
+            'rules' => $state->rules()->with('clauses')->get(),
         ]);
     }
 
