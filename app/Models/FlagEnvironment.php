@@ -6,6 +6,7 @@ use Database\Factories\FlagEnvironmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class FlagEnvironment extends Model
 {
@@ -64,6 +65,14 @@ class FlagEnvironment extends Model
     public function fallthroughVariant(): BelongsTo
     {
         return $this->belongsTo(Variant::class, 'fallthrough_variant_id');
+    }
+
+    /**
+     * @return HasMany<Rule, $this>
+     */
+    public function rules(): HasMany
+    {
+        return $this->hasMany(Rule::class)->orderBy('priority');
     }
 
     /**
