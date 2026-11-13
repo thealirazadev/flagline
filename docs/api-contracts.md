@@ -301,3 +301,4 @@ one audit row; flag create/archive publishes for all environments.
 |---|---|
 | `php artisan app:create-user {email}` | Create the operator (prompts for password). |
 | `php artisan app:create-environment {name}` | Create an environment; prints the SDK key and signing secret once. |
+| `php artisan app:prune-rulesets` | Keep the newest `FLAGLINE_RULESET_KEEP` versions per environment (scheduled daily). |
