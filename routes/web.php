@@ -27,6 +27,8 @@ Route::middleware('auth')->group(function () {
 
     Route::put('/flags/{flag}/environments/{environment}', [FlagEnvironmentController::class, 'update']);
 
+    Route::post('/flags/{flag}/environments/{environment}/kill', [FlagEnvironmentController::class, 'kill']);
+    Route::post('/flags/{flag}/environments/{environment}/restore', [FlagEnvironmentController::class, 'restore']);
     Route::post('/flags/{flag}/environments/{environment}/rules', [RuleController::class, 'store']);
     Route::put('/rules/{rule}', [RuleController::class, 'update'])->whereNumber('rule');
     Route::post('/rules/{rule}/move', [RuleController::class, 'move'])->whereNumber('rule');

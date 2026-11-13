@@ -55,6 +55,7 @@
                         <th scope="col">Type</th>
                         <th scope="col">Status</th>
                         <th scope="col">Last changed</th>
+                        <th scope="col"><span class="sr-only">Kill switch</span></th>
                     </tr>
                     </thead>
                     <tbody>
@@ -78,6 +79,7 @@
                                 @endif
                             </td>
                             <td class="small muted">{{ $flag->updated_at?->toDayDateTimeString() }}</td>
+                            <td>@include('flags._kill')</td>
                         </tr>
                     @endforeach
                     </tbody>

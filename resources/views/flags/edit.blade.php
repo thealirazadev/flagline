@@ -18,8 +18,15 @@
         </div>
     @endif
 
+    @if ($state->killed && ! $flag->isArchived())
+        <div class="banner-danger" role="alert">
+            Killed in {{ $environment->name }}: every evaluation serves the off variant until you restore it.
+        </div>
+    @endif
+
     <div class="card">
         <h2>State in {{ $environment->name }}</h2>
+        @include('flags._kill')
         <p class="muted small">
             Every environment holds its own state. Changes here never affect the other environments.
         </p>

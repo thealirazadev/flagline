@@ -71,4 +71,57 @@ class FlagEnvironmentController extends Controller
                 .'assigned to that variant move to another one. Raising weights never reshuffles users.')
             : $redirect;
     }
+
+    /** Kill switch: wins over everything and publishes before the redirect returns. */
+    public function kill(Flag $flag, Environment $environment): RedirectResponse
+    {
+        return $this->setKilled($flag, $environment, true);
+    }
+
+    public function restore(Flag $flag, Environment $environment): RedirectResponse
+    {
+        return $this->setKilled($flag, $environment, false);
+    }
+
+    private function setKilled(Flag $flag, Environment $environment, bool $killed): RedirectResponse
+    {
+        if ($flag->isArchived()) {
+            return back()->with('error', 'Archived flags cannot be edited.');
+        }
+
+        $state = FlagEnvironment::where('flag_id', $flag->id)
+            ->where('environment_id', $environment->id)
+            ->firstOrFail();
+
+        if ($state->killed === $killed) {
+            return back()->with('status', $killed ? 'Already killed.' : 'Not killed.');
+        }
+
+        $before = $state->stateSnapshot();
+
+        try {
+            $this->publisher->publish($environment, function (array $versions) use ($state, $before, $flag, $environment, $killed) {
+                $state->update(['killed' => $killed]);
+
+                AuditLog::record(
+                    $killed ? 'flag.killed' : 'flag.restored',
+                    $before,
+                    $state->stateSnapshot(),
+                    $flag,
+                    $environment,
+                    $versions[$environment->id] ?? null,
+                );
+            });
+        } catch (Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Could not publish the change. Please try again.');
+        }
+
+        Log::warning($killed ? 'flag.killed' : 'flag.restored', ['key' => $flag->key, 'environment' => $environment->name]);
+
+        return back()->with('status', $killed
+            ? "{$flag->key} is killed in {$environment->name}: every evaluation now serves the off variant."
+            : "{$flag->key} is restored in {$environment->name}.");
+    }
 }

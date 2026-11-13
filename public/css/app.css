@@ -413,3 +413,45 @@ details pre {
   padding: 12px 16px;
   margin-bottom: 16px;
 }
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* Rule builder */
+.rule {
+    border-top: 1px solid var(--border, #e5e7eb);
+    padding-top: 16px;
+    margin-top: 16px;
+}
+
+.clause-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+    align-items: end;
+    margin-bottom: 8px;
+}
+
+.serve .field.inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.serve .field.inline input {
+    width: 8rem;
+}
+
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: 8px;
+}
