@@ -125,3 +125,22 @@ work; log every non-obvious decision with its reason. Keep entries short and dat
   `php -S 127.0.0.1:8124 -t . ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php`
   from `public/` instead. This is a local toolchain artifact, not an application defect, and it
   does not affect `php artisan test`.
+- 2026-11-13 - Round 2 portfolio pass. Real-use check found Phase 2 logged as complete with
+  only commits 1 to 5: there was no `/api/v1/ruleset` route, no 304 path, no kill switch, no
+  prune, and no conflict test, so no SDK could fetch flags. Built them: `AuthenticateSdkKey`,
+  `Api\RulesetController` (serves stored bytes, 304 on matching If-None-Match, version-0
+  document for fresh environments), API error envelope in `bootstrap/app.php`, kill/restore,
+  `app:prune-rulesets` (daily). Verified live with `php -S`: signature recomputed over the
+  body matched, 304 on revalidation, 401/404/405 envelopes.
+- 2026-11-13 - The SDK rate limiter is keyed by a sha256 of the presented bearer token, not the
+  resolved environment: the throttle middleware runs before `sdk.key`, so an environment key
+  was always null and every SDK key shared one bucket (caught by the per-key test).
+- 2026-11-13 - Phase 3 built: `rules` / `rule_clauses`, `SaveRuleRequest`, `RuleController`,
+  `ValidatesServe` (shared by the rule and fallthrough editors). Clause add/remove are no-JS
+  round trips (`clause_action` button) that save nothing. Reorder parks one row above the max
+  priority so the unique index never collides; delete closes the gap lowest-first. A fixed
+  serve counts as its variant holding 10000 for the shrink warning, so variant-to-rollout
+  saves warn. Note: with two variants, raising one weight lowers the other, so any change to
+  a two-way rollout warns; that is correct per the invariant.
+- 2026-11-13 - Dependencies: laravel/framework 12.64.0 -> 12.69.0 (critical advisory) and six
+  transitive packages patched; `composer audit --no-dev` is clean.

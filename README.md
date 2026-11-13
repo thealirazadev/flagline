@@ -16,10 +16,12 @@ rollout, no targeting, no audit trail, redeploys to toggle). flagline is the sel
 path: real rollout mechanics on infrastructure you run, with a deliberately small footprint,
 PHP plus a database, no Redis, no queue, no Node toolchain in the app.
 
-## Planned features
+## Features
 
-All of the following is planned; nothing is implemented yet. Behavior described below is the
-target defined by the docs.
+Phases 1 to 3 are built: the dashboard, environments, flags and audit trail; atomic signed
+publishing with the SDK endpoint, ETag revalidation, and the kill switch; targeting rules and
+percentage rollouts. The PHP and TypeScript SDKs (Phases 4 and 5) are specified but not yet
+built.
 
 - Flags with variants: boolean (`true`/`false`) or string multivariate (2 to 20 values).
 - Environments (production and staging seeded; more via artisan), each with its own SDK key
@@ -67,6 +69,13 @@ target defined by the docs.
 
 ## Status
 
-Planning stage: these documents are the complete specification and no code exists yet.
-Implementation follows `docs/phases.md` one phase at a time, each phase gated by its
-verification checklist and owner approval.
+Phases 1 to 3 are implemented and tested (92 tests, coverage gate 85% in CI on PHP 8.2 to
+8.4). Next: Phase 4, the shared test vectors and the PHP SDK. Implementation follows
+`docs/phases.md` one phase at a time, each gated by its verification checklist.
+
+Quick check of the SDK endpoint once an environment exists (`php artisan
+app:create-environment qa` prints its SDK key once):
+
+```
+curl -i -H "Authorization: Bearer fl_sdk_..." http://localhost:8000/api/v1/ruleset
+```
