@@ -54,6 +54,24 @@ describe evaluation and the SDKs are that specification.
 - SDKs: PHP 8.1+ with zero runtime dependencies; TypeScript targeting Node 18+ with zero
   runtime npm dependencies
 
+## Quick start
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+touch database/database.sqlite
+php artisan migrate --seed        # seeds the production and staging environments
+php artisan app:create-user you@example.com
+php artisan serve
+```
+
+SDKs fetch an environment's published ruleset with its SDK key as a bearer token:
+
+```bash
+curl -i -H "Authorization: Bearer $SDK_KEY" http://127.0.0.1:8000/api/v1/ruleset
+```
+
 ## Documentation
 
 | Document | Contents |
