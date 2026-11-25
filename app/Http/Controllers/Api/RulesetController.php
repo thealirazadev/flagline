@@ -37,7 +37,7 @@ class RulesetController extends Controller
 
         $headers = ['ETag' => $etag, 'Cache-Control' => 'private, no-cache'];
 
-        if (in_array($etag, array_map('trim', explode(',', (string) $request->header('If-None-Match'))), true)) {
+        if (self::matchesIfNoneMatch($etag, (string) $request->header('If-None-Match'))) {
             return response('', 304, $headers);
         }
 
@@ -45,5 +45,21 @@ class RulesetController extends Controller
             'Content-Type' => 'application/json',
             'X-Flagline-Signature' => $signature,
         ]);
+    }
+
+    /**
+     * If-None-Match uses the weak comparison (RFC 9110, section 13.1.2): a proxy that
+     * compresses the response may hand the client W/"..." for our strong tag, and that
+     * client must still get its 304. `*` matches because a document always exists.
+     */
+    private static function matchesIfNoneMatch(string $etag, string $header): bool
+    {
+        foreach (array_map('trim', explode(',', $header)) as $candidate) {
+            if ($candidate === '*' || $candidate === $etag || $candidate === 'W/'.$etag) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

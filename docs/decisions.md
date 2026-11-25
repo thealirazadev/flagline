@@ -23,8 +23,11 @@ A ruleset's version is `max(version) + 1` for its environment, read inside the t
 insert hits the unique index. The publisher retries once in a fresh transaction, so the retry
 re-reads config and publishes the merged result instead of the loser's stale view. Only a conflict
 on the ruleset insert itself is retried; a unique violation raised by the mutation is surfaced
-immediately. A second loss is surfaced rather than retried forever. Feature tests cover both the
-retry and the no-retry case.
+immediately. A second loss is surfaced rather than retried forever. Because the mutation runs
+again, each dashboard mutation re-reads (refreshes) the rows it changes first: a rolled back
+attempt leaves the attempted values on the in-memory model, and saving them again would not be
+dirty, so the change, a kill included, would be silently dropped from the retry. Feature tests
+cover the retry, the no-retry case, and every mutation surviving a retry.
 
 ## 3. The stored bytes are what gets signed and served
 
@@ -34,7 +37,7 @@ API serves the body verbatim with the signature in `X-Flagline-Signature`. Signi
 bytes rather than embedding a signature in the document avoids a JSON canonicalization problem
 that every SDK would otherwise have to solve identically. It also makes serving one indexed read
 with no crypto or serialization per request. The ETag is `"<version>-<first 16 hex of
-sha256(body)>"`; a matching `If-None-Match` (a comma-separated list is accepted) returns 304 with
+sha256(body)>"`; a matching `If-None-Match` (a comma-separated list, a weak `W/` form of the tag, or `*`) returns 304 with
 no body, and responses carry `Cache-Control: private, no-cache` so clients always revalidate.
 
 ## 4. A fresh environment serves a stable version-0 document, not an error
@@ -43,7 +46,9 @@ An environment that has never published gets a synthesized document with version
 signed with its secret. Its `published_at` is the environment's creation time rather than the
 current time, so the body, and therefore the ETag and signature, stay identical across requests
 and the 304 path still works. Empty `flags` is encoded as a JSON object, not an array, so the
-document shape does not change when the first flag appears.
+document shape does not change when the first flag appears. An environment created with
+`app:create-environment` after flags exist gets a disabled state row for each of them and
+publishes version 1, so every flag is editable there and present in its document.
 
 ## 5. Variants are referenced by index, so keys and order are immutable
 

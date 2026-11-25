@@ -83,3 +83,32 @@ it('rate limits per key without affecting other keys', function () {
 
     $this->get('/api/v1/ruleset', ['Authorization' => 'Bearer '.$staging->sdk_key])->assertOk();
 });
+
+it('answers 304 to a weak, listed, or wildcard If-None-Match', function (string $form) {
+    $etag = $this->get('/api/v1/ruleset', $this->auth)->headers->get('ETag');
+
+    $this->get('/api/v1/ruleset', $this->auth + ['If-None-Match' => str_replace('{etag}', $etag, $form)])
+        ->assertStatus(304)->assertHeader('ETag', $etag)->assertContent('');
+})->with([
+    'weak, as a compressing proxy sends it' => ['W/{etag}'],
+    'in a list' => ['"0-0000000000000000", {etag}'],
+    'wildcard' => ['*'],
+]);
+
+it('serves the full document when If-None-Match names another version', function () {
+    $this->get('/api/v1/ruleset', $this->auth + ['If-None-Match' => 'W/"0-0000000000000000"'])
+        ->assertOk()->assertHeader('X-Flagline-Signature');
+});
+
+it('throttles guesses at unknown keys before looking them up', function () {
+    config(['flagline.sdk_rate_limit' => 3]);
+    $guess = ['Authorization' => 'Bearer fl_sdk_guess'];
+
+    foreach (range(1, 3) as $i) {
+        $this->get('/api/v1/ruleset', $guess)->assertStatus(401);
+    }
+    $this->get('/api/v1/ruleset', $guess)
+        ->assertStatus(429)->assertJsonPath('error.code', 'rate_limited');
+
+    $this->get('/api/v1/ruleset', $this->auth)->assertOk();
+});

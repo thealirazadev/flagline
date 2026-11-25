@@ -31,6 +31,10 @@ class RulesetPublisher
     /**
      * Publish a change scoped to one environment.
      *
+     * The mutation runs again after a lost version race, so it must re-read
+     * (refresh) any model it changes: after the rollback an in-memory model
+     * still holds the attempted values, and saving them again is not dirty.
+     *
      * @param  Closure(array<int, int>): mixed  $mutation  receives the versions it is publishing, keyed by environment id
      */
     public function publish(Environment $environment, Closure $mutation): mixed

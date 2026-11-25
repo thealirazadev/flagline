@@ -35,11 +35,15 @@ Feature:
   flag publishes nothing.
 - Audit trail: one row per mutation with before and after snapshots, no row for a rejected
   mutation, filters, empty states, pagination.
-- Ruleset API: 200 with ETag and a signature over the exact bytes, 304 on a matching ETag, a stable
-  version-0 document for a fresh environment, a dashboard change visible on the next fetch, the
-  error envelope for bad keys, methods and paths, and per-key rate limiting.
+- Ruleset API: 200 with ETag and a signature over the exact bytes, 304 on a matching, weak, listed
+  or wildcard ETag, a stable version-0 document for a fresh environment, a dashboard change
+  visible on the next fetch, the error envelope for bad keys, methods and paths, and per-key rate
+  limiting that also throttles guesses at unknown keys.
 - Publishing: one retry when another publisher takes the version first, no retry for a conflict
-  the mutation raised.
+  the mutation raised, and every dashboard mutation (kill, state, flag edit, archive, rule edit,
+  move, delete) still landing after a retry.
+- Environments: `app:create-environment` validation, credentials printed once, and existing
+  flags starting off and published in the new environment.
 - Retention: `app:prune-rulesets` keeps the newest versions and still serves the latest, and
   leaves environments under the limit alone.
 

@@ -81,7 +81,7 @@ class RuleController extends Controller
         $shrinks = $input::shrinksRollout($model->serve_variant_id, $model->serve_rollout, $rollout);
 
         $saved = $this->publish($environment, $flag, function () use ($input, $model, $variantId, $rollout, $before, $flag, $environment): Rule {
-            $model->update([
+            $model->refresh()->update([
                 'description' => $input->validated('description'),
                 'serve_variant_id' => $variantId,
                 'serve_rollout' => $rollout,
@@ -112,6 +112,10 @@ class RuleController extends Controller
         }
 
         [$flag, $environment] = [$model->flagEnvironment->flag, $model->flagEnvironment->environment];
+        if ($flag->isArchived()) {
+            return back()->with('error', 'Archived flags cannot be edited.');
+        }
+
         $neighbour = Rule::where('flag_environment_id', $model->flag_environment_id)
             ->where('priority', $direction === 'up' ? $model->priority - 1 : $model->priority + 1)
             ->first();
@@ -122,7 +126,7 @@ class RuleController extends Controller
         $before = $model->snapshot();
         $saved = $this->publish($environment, $flag, function () use ($model, $neighbour, $before, $flag, $environment): Rule {
             // Park one row outside the range so the unique (env, priority) index never collides.
-            [$from, $to] = [$model->priority, $neighbour->priority];
+            [$from, $to] = [$model->refresh()->priority, $neighbour->refresh()->priority];
             $model->update(['priority' => Rule::where('flag_environment_id', $model->flag_environment_id)->max('priority') + 1]);
             $neighbour->update(['priority' => $from]);
             $model->update(['priority' => $to]);
@@ -145,10 +149,16 @@ class RuleController extends Controller
         }
 
         [$flag, $environment] = [$model->flagEnvironment->flag, $model->flagEnvironment->environment];
+        if ($flag->isArchived()) {
+            return back()->with('error', 'Archived flags cannot be edited.');
+        }
+
         $before = $model->snapshot();
 
         $deleted = $this->publish($environment, $flag, function () use ($model, $before, $flag, $environment): bool {
-            $model->delete();
+            // A query delete, not $model->delete(): after a rolled back attempt the model
+            // already reads as deleted and Eloquent would skip the DELETE.
+            Rule::whereKey($model->id)->delete();
             // Close the gap one row at a time, lowest first, so the unique index never collides.
             Rule::where('flag_environment_id', $model->flag_environment_id)
                 ->where('priority', '>', $model->priority)
