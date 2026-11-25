@@ -37,7 +37,7 @@ API serves the body verbatim with the signature in `X-Flagline-Signature`. Signi
 bytes rather than embedding a signature in the document avoids a JSON canonicalization problem
 that every SDK would otherwise have to solve identically. It also makes serving one indexed read
 with no crypto or serialization per request. The ETag is `"<version>-<first 16 hex of
-sha256(body)>"`; a matching `If-None-Match` (a comma-separated list is accepted) returns 304 with
+sha256(body)>"`; a matching `If-None-Match` (a comma-separated list, a weak `W/` form of the tag, or `*`) returns 304 with
 no body, and responses carry `Cache-Control: private, no-cache` so clients always revalidate.
 
 ## 4. A fresh environment serves a stable version-0 document, not an error
@@ -46,7 +46,9 @@ An environment that has never published gets a synthesized document with version
 signed with its secret. Its `published_at` is the environment's creation time rather than the
 current time, so the body, and therefore the ETag and signature, stay identical across requests
 and the 304 path still works. Empty `flags` is encoded as a JSON object, not an array, so the
-document shape does not change when the first flag appears.
+document shape does not change when the first flag appears. An environment created with
+`app:create-environment` after flags exist gets a disabled state row for each of them and
+publishes version 1, so every flag is editable there and present in its document.
 
 ## 5. Variants are referenced by index, so keys and order are immutable
 

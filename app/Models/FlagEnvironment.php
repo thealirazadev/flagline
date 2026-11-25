@@ -76,6 +76,27 @@ class FlagEnvironment extends Model
     }
 
     /**
+     * The state a flag starts with in an environment: off and not killed. Boolean
+     * flags serve false when off and true on fallthrough; string flags serve their
+     * first variant for both.
+     */
+    public static function createDefault(Flag $flag, Environment $environment): self
+    {
+        $variants = $flag->variants()->get();
+        $offVariant = $flag->isBoolean() ? $variants->firstWhere('value', 'false') : $variants->first();
+        $fallthroughVariant = $flag->isBoolean() ? $variants->firstWhere('value', 'true') : $variants->first();
+
+        return self::create([
+            'flag_id' => $flag->id,
+            'environment_id' => $environment->id,
+            'enabled' => false,
+            'killed' => false,
+            'off_variant_id' => $offVariant->id,
+            'fallthrough_variant_id' => $fallthroughVariant->id,
+        ]);
+    }
+
+    /**
      * The audit trail stores this shape as the before/after snapshot.
      *
      * @return array<string, mixed>

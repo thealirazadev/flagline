@@ -194,19 +194,8 @@ class FlagController extends Controller
      */
     private function createEnvironmentState(Flag $flag): void
     {
-        $variants = $flag->variants()->get();
-        $offVariant = $flag->isBoolean() ? $variants->firstWhere('value', 'false') : $variants->first();
-        $fallthroughVariant = $flag->isBoolean() ? $variants->firstWhere('value', 'true') : $variants->first();
-
         foreach (Environment::all() as $environment) {
-            FlagEnvironment::create([
-                'flag_id' => $flag->id,
-                'environment_id' => $environment->id,
-                'enabled' => false,
-                'killed' => false,
-                'off_variant_id' => $offVariant->id,
-                'fallthrough_variant_id' => $fallthroughVariant->id,
-            ]);
+            FlagEnvironment::createDefault($flag, $environment);
         }
     }
 
