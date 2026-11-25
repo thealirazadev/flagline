@@ -7,8 +7,8 @@ form-heavy screen, works entirely through round-trip form posts.
 
 ## Screens
 
-- **Login** (`/login`) - email, password, submit. Throttle and error messaging per
-  `docs/rules.md`.
+- **Login** (`/login`) - email, password, submit. Failures are throttled per email and IP and
+  get one generic error message.
 - **Flag index** (`/flags`) - the home screen. Environment switcher (a segmented link row:
   production, staging, any extras) scopes the whole page. Table: flag key (monospace, links to
   edit), name, type badge, per-selected-environment status badge, last-changed timestamp, and

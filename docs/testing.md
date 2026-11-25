@@ -2,64 +2,60 @@
 
 ## Strategy
 
-- **Automated first, manual second.** Every feature ships with automated tests in the same
-  commit series; the manual checklists in `docs/phases.md` cover what automation can't observe
-  well (live cross-SDK polling, keyboard passes, real propagation timing).
-- **Three independent suites.** The Laravel app (Pest on PHPUnit, in-memory SQLite with
-  `RefreshDatabase`), the PHP SDK (Pest, standalone in `sdks/php`), and the TypeScript SDK
-  (Vitest + `tsc --strict`, standalone in `sdks/typescript`). No suite imports another's code.
-- **The vectors are the contract.** `sdks/test-vectors/bucketing.json` and `evaluation.json`
-  are consumed byte-identically by both SDK suites. A vector failure is never fixed by editing
-  the vector; it is fixed in the SDK that diverged from the spec (vector changes need owner
-  sign-off, per `docs/rules.md`).
-- **Fakes over network.** App tests use `Http::fake` where relevant and never make real
-  outbound calls. SDK fetcher tests run against a local in-process stub server scripted to
-  return 200/304/401/500, timeouts, tampered bodies, and unknown schema versions. Clocks are
-  faked for poll-interval and propagation-bound tests.
+- **Automated first.** Every feature ships with Pest tests (on PHPUnit) for the Laravel app. They
+  run against in-memory SQLite (`phpunit.xml` sets `DB_CONNECTION=sqlite`,
+  `DB_DATABASE=:memory:`) with `RefreshDatabase`, so the suite needs no running database.
+- **Feature tests over the HTTP surface.** Most tests drive the dashboard and the API through real
+  requests, then assert on the stored config, the audit rows and the published ruleset document,
+  because the guarantees that matter (atomic publish, versioning, signing) are only visible end to
+  end.
+- **No network.** The suite makes no outbound calls.
+- **Manual checks** cover what automation does not observe well: keyboard passes through the
+  dashboard and timing a kill against a live polling client.
 
-## What gets covered where
+## What gets covered
 
-Unit (app): `RulesetBuilder` (variant index mapping, archived exclusion, empty environment,
-rollout serialization), `RulesetSigner` (sign/verify, tamper, wrong secret, constant-time
-compare), `KeyGenerator` (format, uniqueness).
+Unit: `KeyGenerator` (SDK key and signing secret format, length, no repeats).
 
-Feature (app): auth (login, throttle, logout, guests, no registration); flag CRUD and
-validation (key pattern, immutability, variant rules); per-environment state isolation;
-rule builder round-trips (add/edit/delete/reorder, priority resequencing, weight sum
-validation); kill/restore; audit rows for every mutation (same-transaction assertion);
-ruleset API (200 with headers, 304 on ETag match, 401, 405, 429, version-0 document);
-publish atomicity (forced builder failure rolls back config and audit); version conflict
-retry (two racing publishes, no duplicate or skipped version); prune boundaries.
+Feature:
+- Auth: login, wrong password with a safe error, validation, throttling per email and IP, logout,
+  guests redirected to the login page, no registration route.
+- Flag CRUD and validation: boolean flags get exactly `true`/`false`, string flags keep variant
+  order and need at least two distinct variants, key pattern and length, duplicate keys, name
+  length, key and type never updated, archive hides the flag and makes it read-only, index search
+  and filters, the no-JS variant round trip.
+- Per-environment state: new flags default to off with `false` off and `true` fallthrough, changes
+  in one environment leave the others alone, variants from another flag are rejected, archived
+  flags refuse state changes.
+- Rule builder: add, reorder and delete rules with priorities resequenced and one version bump per
+  step, a stale double delete, rollout weights that must sum to 10000, rollout serves by variant
+  index, semver clause validation, forged operators and oversized values, clause rows added and
+  removed without saving, and the weight-lowering warning.
+- Kill switch: kill and restore publish synchronously and are audited; killing an already killed
+  flag publishes nothing.
+- Audit trail: one row per mutation with before and after snapshots, no row for a rejected
+  mutation, filters, empty states, pagination.
+- Ruleset API: 200 with ETag and a signature over the exact bytes, 304 on a matching ETag, a stable
+  version-0 document for a fresh environment, a dashboard change visible on the next fetch, the
+  error envelope for bad keys, methods and paths, and per-key rate limiting.
+- Publishing: one retry when another publisher takes the version first, no retry for a conflict
+  the mutation raised.
+- Retention: `app:prune-rulesets` keeps the newest versions and still serves the latest, and
+  leaves environments under the limit alone.
 
-Unit (SDKs, both): bucketer against all bucketing vectors plus algorithm reference values;
-semver parse/compare including prerelease ordering; evaluator against all evaluation vectors;
-signature verify accept/reject.
-
-Integration (SDKs, both): fetcher against the stub server (ETag flow, degrade on every failure
-class, jitter bounds, no throw from `variation` ever); client lifecycle (`not_ready` before
-first fetch, last-good after server death, recovery after restart); kill propagation within
-`poll + jitter + timeout` under a fake clock.
-
-End-to-end (manual, phase checklists): one live server, both SDKs polling; 20 scripted
-contexts produce identical variants in both; a live kill propagates within the bound; a clean
-clone passes every suite using only README commands.
+The PHP and TypeScript SDKs, and the shared test vectors both will be checked against, are not in
+the repository yet, so there are no SDK suites.
 
 ## Exact commands
 
 ```bash
-# App: full suite, single file, formatting
+# Full suite, one file, formatting
 php artisan test
-php artisan test tests/Feature/RulesetApiTest.php
+php artisan test tests/Feature/RulesetEndpointTest.php
 ./vendor/bin/pint --test
 
-# PHP SDK
-cd sdks/php && composer install && ./vendor/bin/pest
-
-# TypeScript SDK
-cd sdks/typescript && npm ci && npm test && npx tsc --noEmit
-
-# Cross-SDK parity (Phase 5)
-./sdks/parity.sh
+# What CI runs for tests (needs the pcov or xdebug extension for coverage)
+./vendor/bin/pest --coverage --min=85
 ```
 
 First-time app setup:
@@ -73,24 +69,16 @@ php artisan migrate --seed
 php artisan app:create-user you@example.com
 ```
 
-## CI plan
+## CI
 
-GitHub Actions on push and pull request to `main`, three independent jobs so an SDK failure is
-attributable at a glance:
+`.github/workflows/ci.yml` runs on every push and pull request to `main`, as a matrix over PHP 8.2,
+8.3 and 8.4 with the `pdo_sqlite` and `sqlite3` extensions and pcov for coverage:
 
-1. **app**: PHP 8.2; `composer install`, `./vendor/bin/pint --test`, `php artisan test`.
-2. **sdk-php**: PHP 8.2; `composer install` and Pest inside `sdks/php`.
-3. **sdk-ts**: Node 18 and 20 matrix; `npm ci`, `npx tsc --noEmit`, `npm test` inside
-   `sdks/typescript`.
+1. `composer install --no-interaction --prefer-dist --no-progress`
+2. `vendor/bin/pint --test`
+3. `vendor/bin/pest --coverage --min=85` (fails below 85 percent coverage of `app/`)
 
-The parity script runs inside both SDK jobs (it only needs the vectors plus that job's SDK).
-CI lands after Phase 5; until then the same commands run locally per the phase checklists.
+## Before merging
 
-## Definition of "done" for a feature
-
-1. `./vendor/bin/pint --test` clean (and `tsc --noEmit` for TS changes).
-2. The owning suite green, new tests included; vector-touching changes green in BOTH SDKs.
-3. The feature's manual checklist items in `docs/phases.md` pass.
-
-After creating or editing files, run the relevant suite and fix all errors before reporting
-done. One commit per feature, in the order listed in `docs/phases.md`.
+1. `./vendor/bin/pint --test` clean.
+2. The suite green, with new tests for the behavior that changed.

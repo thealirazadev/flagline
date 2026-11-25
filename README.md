@@ -1,10 +1,10 @@
 # flagline
 
 A self-hosted feature flag and gradual rollout service built with Laravel, plus two thin
-local-evaluation SDKs (PHP and TypeScript) shipped in the same repository. Define boolean or
-multivariate flags per environment, target users with attribute and semver rules, roll variants
-out gradually with deterministic percentage bucketing, and kill a misbehaving flag with one
-click. SDKs poll a signed, versioned ruleset document with ETag revalidation and evaluate every
+local-evaluation SDKs (PHP and TypeScript, not yet built) designed to ship in the same
+repository. Define boolean or multivariate flags per environment, target users with attribute
+and semver rules, roll variants out gradually with deterministic percentage bucketing, and kill
+a misbehaving flag with one click. SDKs poll a signed, versioned ruleset document with ETag revalidation and evaluate every
 flag locally, so flag checks cost zero network calls and keep working from the last good
 ruleset even when the flag server is down.
 
@@ -18,10 +18,11 @@ PHP plus a database, no Redis, no queue, no Node toolchain in the app.
 
 ## Features
 
-Phases 1 to 3 are built: the dashboard, environments, flags and audit trail; atomic signed
-publishing with the SDK endpoint, ETag revalidation, and the kill switch; targeting rules and
-percentage rollouts. The PHP and TypeScript SDKs (Phases 4 and 5) are specified but not yet
-built.
+Built: the dashboard, environments, flags and audit trail; atomic signed publishing with the
+SDK endpoint, ETag revalidation, and the kill switch; targeting rules and percentage rollouts.
+The PHP and TypeScript SDKs, which evaluate the published document locally, are specified in
+`docs/architecture.md` and `docs/api-contracts.md` but not yet built; the bullets below that
+describe evaluation and the SDKs are that specification.
 
 - Flags with variants: boolean (`true`/`false`) or string multivariate (2 to 20 values).
 - Environments (production and staging seeded; more via artisan), each with its own SDK key
@@ -47,7 +48,7 @@ built.
 
 ## Stack
 
-- PHP 8.2+ / Laravel 11.x, Blade plus one static CSS file (no Node toolchain in the app)
+- PHP 8.2+ / Laravel 12.x, Blade plus one static CSS file (no Node toolchain in the app)
 - SQLite by default, PostgreSQL supported; no Redis, no queue daemon
 - Pest (app and PHP SDK tests), Vitest + tsc (TypeScript SDK tests), Laravel Pint
 - SDKs: PHP 8.1+ with zero runtime dependencies; TypeScript targeting Node 18+ with zero
@@ -57,21 +58,17 @@ built.
 
 | Document | Contents |
 |---|---|
-| [docs/PRD.md](docs/PRD.md) | Problem, target user, prioritized features, non-goals, success criteria |
 | [docs/architecture.md](docs/architecture.md) | Stack rationale, evaluation spec, bucketing, document schema, signing, data model, failure modes, invariants |
-| [docs/rules.md](docs/rules.md) | Project-specific engineering rules extending the workspace rules |
-| [docs/phases.md](docs/phases.md) | Five implementation phases with commit lists and verification checklists |
+| [docs/decisions.md](docs/decisions.md) | Design decisions behind the server, and the bugs and edge cases that shaped them |
 | [docs/design.md](docs/design.md) | Dashboard screens, states, tokens, accessibility baseline |
-| [docs/testing.md](docs/testing.md) | Test strategy across the three suites, shared vectors, CI plan |
+| [docs/testing.md](docs/testing.md) | Test strategy, exact commands, and what CI runs |
 | [docs/api-contracts.md](docs/api-contracts.md) | Ruleset endpoint, error envelope, SDK public APIs, dashboard routes |
-| [docs/launch-checklist.md](docs/launch-checklist.md) | Pre-production checks including kill switch and server-death drills |
-| [docs/memory.md](docs/memory.md) | Working log and decisions record |
 
 ## Status
 
-Phases 1 to 3 are implemented and tested (92 tests, coverage gate 85% in CI on PHP 8.2 to
-8.4). Next: Phase 4, the shared test vectors and the PHP SDK. Implementation follows
-`docs/phases.md` one phase at a time, each gated by its verification checklist.
+The server (dashboard, publishing, the ruleset API, rules and rollouts) is implemented and
+tested, with an 85% coverage gate in CI on PHP 8.2 to 8.4. Next: the shared test vectors and the
+PHP SDK, then the TypeScript SDK.
 
 Quick check of the SDK endpoint once an environment exists (`php artisan
 app:create-environment qa` prints its SDK key once):

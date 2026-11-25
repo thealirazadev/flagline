@@ -208,7 +208,7 @@ tests/
 
 ## Tech stack with rationale
 
-- **Laravel 11.x (PHP 8.2+)** - Routing, validation, Eloquent, transactions, scheduler,
+- **Laravel 12.x (PHP 8.2+)** - Routing, validation, Eloquent, transactions, scheduler,
   first-class testing. Exact versions pinned at install; `composer.lock` committed. PHP 8.1+
   gives native `hash('murmur3a')`, so server and PHP SDK need no hashing dependency.
 - **SQLite (default) / PostgreSQL (supported)** - SQLite makes self-hosting a one-file affair
