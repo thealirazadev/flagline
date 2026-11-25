@@ -128,7 +128,7 @@ class FlagController extends Controller
 
         try {
             $this->publisher->publishToAll(function () use ($request, $flag, $before) {
-                $flag->update($request->validated());
+                $flag->refresh()->update($request->validated());
 
                 AuditLog::record('flag.updated', $before, $this->snapshot($flag->fresh()), $flag);
             });
@@ -154,6 +154,7 @@ class FlagController extends Controller
         try {
             $this->publisher->publishToAll(function () use ($flag, $before) {
                 // archived_at stays out of $fillable so no request payload can set it.
+                $flag->refresh();
                 $flag->archived_at = now();
                 $flag->save();
 

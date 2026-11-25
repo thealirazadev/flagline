@@ -23,8 +23,11 @@ A ruleset's version is `max(version) + 1` for its environment, read inside the t
 insert hits the unique index. The publisher retries once in a fresh transaction, so the retry
 re-reads config and publishes the merged result instead of the loser's stale view. Only a conflict
 on the ruleset insert itself is retried; a unique violation raised by the mutation is surfaced
-immediately. A second loss is surfaced rather than retried forever. Feature tests cover both the
-retry and the no-retry case.
+immediately. A second loss is surfaced rather than retried forever. Because the mutation runs
+again, each dashboard mutation re-reads (refreshes) the rows it changes first: a rolled back
+attempt leaves the attempted values on the in-memory model, and saving them again would not be
+dirty, so the change, a kill included, would be silently dropped from the retry. Feature tests
+cover the retry, the no-retry case, and every mutation surviving a retry.
 
 ## 3. The stored bytes are what gets signed and served
 

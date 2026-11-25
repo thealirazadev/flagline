@@ -203,3 +203,20 @@ it('renders the rule builder on the flag edit screen', function () {
     $this->get('/flags/checkout-redesign/edit')->assertOk()
         ->assertSee(['Targeting rules in production', 'Pro plans', 'Add clause', 'Save rule', 'Percentage rollout']);
 });
+
+it('refuses to move or delete the rules of an archived flag', function () {
+    $this->post($this->url, rule(['description' => 'first']));
+    $this->post($this->url, rule(['description' => 'second']));
+    $this->post('/flags/checkout-redesign/archive');
+    $second = Rule::where('description', 'second')->firstOrFail();
+    $before = version();
+
+    $this->post("/rules/{$second->id}/move", ['direction' => 'up'])
+        ->assertSessionHas('error', 'Archived flags cannot be edited.');
+    $this->delete("/rules/{$second->id}")
+        ->assertSessionHas('error', 'Archived flags cannot be edited.');
+
+    expect(priorities())->toBe([0 => 'first', 1 => 'second'])
+        ->and(version())->toBe($before)
+        ->and(AuditLog::whereIn('action', ['rule.updated', 'rule.deleted'])->count())->toBe(0);
+});

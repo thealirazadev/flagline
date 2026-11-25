@@ -35,7 +35,7 @@ class FlagEnvironmentController extends Controller
 
         try {
             $this->publisher->publish($environment, function () use ($request, $state, $before, $flag, $environment, $variantId, $rollout) {
-                $state->update([
+                $state->refresh()->update([
                     'enabled' => $request->boolean('enabled'),
                     'off_variant_id' => $request->integer('off_variant_id'),
                     'fallthrough_variant_id' => $variantId,
@@ -101,7 +101,7 @@ class FlagEnvironmentController extends Controller
 
         try {
             $this->publisher->publish($environment, function (array $versions) use ($state, $before, $flag, $environment, $killed) {
-                $state->update(['killed' => $killed]);
+                $state->refresh()->update(['killed' => $killed]);
 
                 AuditLog::record(
                     $killed ? 'flag.killed' : 'flag.restored',
