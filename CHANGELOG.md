@@ -3,11 +3,11 @@
 ## Unreleased
 
 ### Added
-- Phase 3: targeting rules with clauses (`eq`, `in`, `contains`, `semver_*`), a no-JS rule
+- Targeting rules with clauses (`eq`, `in`, `contains`, `semver_*`), a no-JS rule
   builder with add/remove clause rows and up/down reordering, percentage rollouts for rules
   and the fallthrough (basis points summing to 10000), a reshuffle warning when a save
   lowers a weight, and rules published in the ruleset document.
-- The Phase 2 distribution pieces that were missing: `GET /api/v1/ruleset` with SDK key
+- Ruleset distribution: `GET /api/v1/ruleset` with SDK key
   auth, the JSON error envelope, ETag/304 revalidation, a per-key rate limit, the kill
   switch with synchronous publish, the `app:prune-rulesets` retention command, and a test
   for the publish-conflict retry.
